@@ -13,10 +13,10 @@ cargo install cargo-generate
 ### Usage
 
 ```
-cargo generate --git ssh://git@git.postgrespro.ru/e.lepihin/rust-cli-template
+cargo generate --git https://github.com/johnlepikhin/rust-cli-template
 
 # or
-cargo generate --git ssh://git@git.postgrespro.ru/e.lepihin/rust-cli-template --name my-project
+cargo generate --git https://github.com/johnlepikhin/rust-cli-template --name my-project
 ```
 
 [Learn more about `cargo generate` here.](https://github.com/cargo-generate/cargo-generate)
