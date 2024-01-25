@@ -30,7 +30,7 @@ struct Application {
 }
 
 impl Application {
-    fn init_syslog_logger(log_level: slog::Level) -> Result<slog_scope::GlobalLoggerGuard> {
+    fn init_syslog_logger(log_level: slog::Level) -> Result<()> {
         let logger = slog_syslog::SyslogBuilder::new()
             .facility(slog_syslog::Facility::LOG_USER)
             .level(log_level)
@@ -38,19 +38,29 @@ impl Application {
             .start()?;
 
         let logger = slog::Logger::root(logger.fuse(), o!());
-        Ok(slog_scope::set_global_logger(logger))
+        slog_scope::set_global_logger(logger).cancel_reset();
+        Ok(())
     }
 
-    fn init_env_logger() -> Result<slog_scope::GlobalLoggerGuard> {
-        Ok(slog_envlogger::init()?)
+    fn init_env_logger() -> Result<()> {
+        let drain =
+            slog_term::CompactFormat::new(slog_term::TermDecorator::new().stderr().build()).build();
+        // let drain = new(drain);
+        let drain = std::sync::Mutex::new(drain.fuse());
+        let logger = slog::Logger::root(drain.fuse(), o!());
+        slog_scope::set_global_logger(logger).cancel_reset();
+        Ok(())
     }
 
-    fn init_logger(&self, config: &config::Config) -> Result<slog_scope::GlobalLoggerGuard> {
+    fn init_logger(&self, config: &config::Config) -> Result<()> {
         if std::env::var("RUST_LOG").is_ok() {
-            Self::init_env_logger()
+            Self::init_env_logger()?
         } else {
-            Self::init_syslog_logger(config.log_level.into())
+            Self::init_syslog_logger(config.log_level.into())?
         }
+        slog_stdlog::init()?;
+
+        Ok(())
     }
 
     fn config_documentation() {
@@ -65,7 +75,7 @@ impl Application {
         match &self.command {
             CommandLine::DumpConfig => {
                 let config = config::Config::read(&self.config_path).expect("Config");
-                let _logger_guard = self.init_logger(&config).expect("Logger");
+                self.init_logger(&config).expect("Logger");
 
                 let config =
                     serde_yaml::to_string(&config).with_context(|| "Failed to dump config")?;
